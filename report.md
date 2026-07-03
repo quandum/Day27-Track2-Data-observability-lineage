@@ -22,27 +22,39 @@ Xây dựng một Apache Airflow DAG để tự động kiểm tra chất lượ
 
 ---
 
-## 2. Cấu trúc dự án
+## 2. Cấu trúc dự án & Phân tích file
 
 ```
 starter_project/
+├── .env.example                         ← Mẫu biến môi trường (DISCORD_WEBHOOK_URL, AIRFLOW_INPUT_FILE)
 ├── dags/
-│   └── sales_data_quality_pipeline.py   ← DAG Airflow (cần hoàn thiện)
+│   └── sales_data_quality_pipeline.py   ← ⚠️ FILE DUY NHẤT cần sửa: validate_orders_task()
 ├── data/
-│   ├── orders_failed.csv                ← Dataset có lỗi (10 dòng)
-│   └── orders_passed.csv                ← Dataset sạch (10 dòng)
+│   ├── orders_failed.csv                ← Dataset có lỗi (10 dòng, 6 lỗi)
+│   └── orders_passed.csv                ← Dataset sạch (10 dòng, 0 lỗi)
 ├── expected/
-│   ├── validation_summary_failed.json   ← Kết quả mong đợi (failed)
-│   └── validation_summary_passed.json   ← Kết quả mong đợi (passed)
-├── output/                              ← Thư mục output (tự động tạo)
+│   ├── validation_summary_failed.json   ← JSON mẫu: missing=2, invalid_amount=2, invalid_status=2
+│   └── validation_summary_passed.json   ← JSON mẫu: tất cả counters = 0
+├── output/                              ← Thư mục output (tự động tạo bởi write_summary)
 │   └── validation_summary.json          ← File JSON sinh ra tự động
 ├── scripts/
-│   └── run_local_check.py               ← Script kiểm tra local
+│   └── run_local_check.py               ← Script test local (đã hoàn chỉnh)
 └── src/
-    ├── __init__.py
-    ├── config.py                        ← Cấu hình (đã hoàn chỉnh)
-    └── validation.py                    ← Logic validation (đã hoàn chỉnh)
+    ├── __init__.py                      ← File trống (package marker)
+    ├── config.py                        ← Cấu hình (✅ hoàn chỉnh, không cần sửa)
+    └── validation.py                    ← Logic validation (✅ hoàn chỉnh, không cần sửa)
 ```
+
+### Trạng thái từng file
+
+| File | Trạng thái | Vai trò |
+|------|-----------|--------|
+| `src/config.py` | ✅ Hoàn chỉnh | Định nghĩa paths, VALID_STATUSES, DISCORD_WEBHOOK_URL, AIRFLOW_INPUT_FILE |
+| `src/validation.py` | ✅ Hoàn chỉnh | `read_rows()`, `build_summary()`, `write_summary()`, `send_discord_message()`, `run_lab_check()` |
+| `scripts/run_local_check.py` | ✅ Hoàn chỉnh | CLI test local, gọi `run_lab_check()` |
+| `dags/sales_data_quality_pipeline.py` | ⚠️ Cần sửa | Hàm `validate_orders_task()` đang là `raise NotImplementedError` |
+| `data/orders_failed.csv` | ✅ Có sẵn | 10 dòng với 6 lỗi: 2 thiếu customer_id, 2 amount ≤ 0, 2 status sai |
+| `data/orders_passed.csv` | ✅ Có sẵn | 10 dòng sạch, tất cả hợp lệ |
 
 ---
 
@@ -53,9 +65,13 @@ starter_project/
 - [ ] Kiểm tra cấu trúc thư mục `starter_project/`
 - [ ] Xác nhận code trong `src/config.py` và `src/validation.py` đã hoàn chỉnh
 
-### Bước 2: Hoàn thiện DAG Airflow
-- [ ] Implement hàm `validate_orders_task()` trong `dags/sales_data_quality_pipeline.py`
-- [ ] Kết nối với các hàm từ `src/validation.py`
+### Bước 2: Hoàn thiện DAG Airflow (FILE DUY NHẤT cần sửa)
+- [ ] Mở `starter_project/dags/sales_data_quality_pipeline.py`
+- [ ] Thay `raise NotImplementedError` trong `validate_orders_task()` bằng code thực thi
+- [ ] Import: `AIRFLOW_INPUT_FILE`, `SUMMARY_FILE`, `DISCORD_WEBHOOK_URL` từ `src.config`
+- [ ] Import: `read_rows`, `build_summary`, `write_summary`, `send_discord_message`, `LabValidationError` từ `src.validation`
+- [ ] Gọi tuần tự: `read_rows()` → `build_summary()` → `write_summary()` → `send_discord_message()`
+- [ ] Raise `LabValidationError` nếu `validation_status == "failed"`
 
 ### Bước 3: Chạy kiểm tra với dataset passing
 - [ ] Chạy `run_local_check.py` với `orders_passed.csv`
